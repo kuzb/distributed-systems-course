@@ -14,27 +14,20 @@ def handleInterrupt():
             os._exit(0)
 
 @Pyro4.expose
-class GreetingMaker(object):
-    def get_fortune(self,name):
-        print(name + " is calling the method")
-        num = random.randint(0, 10)
-        return ("Hello, " + name + " your lucky number is " + str(num))
+class Sum(object):
     def print_sum(self, int1, int2):
-        #print("Going to add following intergers" + str(int1) + " and " + str(int2))
         num = int(int1) + int(int2)
         return num
-
 
 
 def main():
     deamon = Pyro4.Daemon()
     ns = Pyro4.locateNS()
-    uri = deamon.register(GreetingMaker)
+    uri = deamon.register(Sum)
 
-    # Instead connecting using the uri, we are using ns to connect using "example.greeting" tag
-    ns.register("example.greeting", uri)
-    # you need to run "python -m Pyro4.naming" beforing starting the server
-
+    print(uri)
+    
+    ns.register("example.sum", uri)
 
     print("READY")
     deamon.requestLoop()
