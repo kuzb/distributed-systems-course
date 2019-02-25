@@ -4,15 +4,6 @@ import subprocess
 import os
 import sys
 
-#restore the terminal to its original operating mode.
-def handleInterrupt():
-        try:
-            subprocess.call(["clear"])
-            sys.exit(0)
-        except SystemExit:
-            subprocess.call(["clear"])
-            os._exit(0)
-
 @Pyro4.expose
 class GreetingMaker(object):
     def get_fortune(self,name):
@@ -25,11 +16,10 @@ class GreetingMaker(object):
         return num
 
 
-
 def main():
-    deamon = Pyro4.Daemon()
+    daemon = Pyro4.Daemon()
     ns = Pyro4.locateNS()
-    uri = deamon.register(GreetingMaker)
+    uri = daemon.register(GreetingMaker)
 
     # Instead connecting using the uri, we are using ns to connect using "example.greeting" tag
     ns.register("example.greeting", uri)
@@ -37,7 +27,7 @@ def main():
 
 
     print("READY")
-    deamon.requestLoop()
+    daemon.requestLoop()
 
 
 if __name__ == '__main__':
@@ -45,4 +35,5 @@ if __name__ == '__main__':
         subp = subprocess.Popen(['python -m Pyro4.naming'])
         main()
     except KeyboardInterrupt: # To handle keyboardinterrupt more gracefully
-        handleInterrupt()
+        subp.kill()
+        print("NS is shut down and program is terminated")
