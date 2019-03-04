@@ -26,13 +26,14 @@ class number():
         return self.start, self.end
 
 rand = number()
+
 # Standard routes
 @app.route('/setRange/<int:start>/<int:end>')
 def resettingRange(start,end):
     rand.setRandRange(start,end)
     return 'OK'
 
-@app.route('/getNumber')
+@app.route('/getRange')
 def gettingRange():
     return json.dumps({
         'start' : str(rand.getRange()[0]),
@@ -55,7 +56,7 @@ class guessNumber(Resource):
             return json.dumps({'result':'more'})
     
 
-# For Rest api endpoint
+# REST ROUTE(though not following the standard)
 api.add_resource(guessNumber,'/guess/<int:number>')
 
 if __name__ == '__main__':
