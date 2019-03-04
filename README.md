@@ -35,3 +35,19 @@ $ python client.py
 ```
 
 Enter the requested input to the Client.
+
+### LAB2
+
+Server stores an random number, and client makes requests to guess that random number.
+
+Initially run the server
+
+```
+$ python server.py
+```
+
+then the client
+
+```
+$ python client.py
+```
