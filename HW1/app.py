@@ -10,6 +10,45 @@ flight_id = 0
 ticket_id = 0
 flights = []
 
+class flight:
+    def __init__(self):
+        flights = []    
+
+    def add(self, id, seats, dest, source, date):
+        flights.insert({
+            "dest" : dest , 
+            "from" : source , 
+            "date" : date,
+            "id" : id , 
+            "seats" : seats ,
+        })
+        return 1
+    
+    def incrementSeat(self, id):
+        for flight in self.flights:
+            if(id == flight["id"]):
+                flight["seats"] = flight["seats"] + 1
+                return 1
+        return 0
+
+    def delete(self, id):
+        for flight in self.flights:
+            if(id == flight["id"]):
+                flights.remove(flight)
+                return 1
+        return 0
+
+    def get(self, id):
+        for flight in self.flights:
+            if(id == flight["id"]):
+                return flight
+        return 0
+
+    def getAll(self):
+        return self.flights
+
+flights = flight()
+
 class Flight(Resource):
     def get(self, id):
         for flight in flights:
