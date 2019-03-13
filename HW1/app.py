@@ -1,12 +1,12 @@
 from flask import  Flask, jsonify, request
 from flask_restful import Resource, Api, reqparse
-import json
 import random
 
 app = Flask(__name__)
 api = Api(app)
 
-flight_id = 0
+global flight_id
+flight_id = 3
 ticket_id = 0
 
 class flight:
@@ -21,7 +21,7 @@ class flight:
             "id" : id , 
             "seats" : seats ,
         })
-        return id, 201
+        return {"flight_id": id }
     
     def incrementSeat(self, id):
         for flight in self.flights:
@@ -65,13 +65,15 @@ class Flight(Resource):
     
 @app.route('/flights', methods=['GET'])
 def getAllFlights():
-    return json.dumps(flights.getAll()), 200
+    return jsonify(flights.getAll()), 200
 
 @app.route('/flights', methods=['PUT'])
 def addFlight():
-    flight_id = flight_id + 1
+    global flight_id 
+    flight_id += 1
+    print(flight_id)
     payload = request.json    
-    return json.dumps(flights.add(flight_id,0,payload["dest"],payload["from"],payload["date"])),201
+    return jsonify(flights.add(flight_id,0,payload["dest"],payload["from"],payload["date"])), 201
 
 api.add_resource(Flight, "/flights/<int:id>")
 
