@@ -8,86 +8,71 @@ api = Api(app)
 
 flight_id = 0
 ticket_id = 0
-flights = []
 
 class flight:
     def __init__(self):
-        flights = []    
+        self.flights = []    
 
     def add(self, id, seats, dest, source, date):
-        flights.insert({
+        self.flights.append({
             "dest" : dest , 
             "from" : source , 
             "date" : date,
             "id" : id , 
             "seats" : seats ,
         })
-        return 1
+        return id, 201
     
     def incrementSeat(self, id):
         for flight in self.flights:
             if(id == flight["id"]):
-                flight["seats"] = flight["seats"] + 1
-                return 1
-        return 0
+                if flight["seats"] < 100:
+                    flight["seats"] = flight["seats"] + 1
+                    return 1
+                else:
+                    return 0, "No seat available"
+        return 0, "Not Found"
 
     def delete(self, id):
         for flight in self.flights:
             if(id == flight["id"]):
-                flights.remove(flight)
-                return 1
-        return 0
+                self.flights.remove(flight)
+                return "{} is deleted.".format(id), 200
+        return "User not found", 404
 
     def get(self, id):
         for flight in self.flights:
             if(id == flight["id"]):
-                return flight
-        return 0
+                return flight, 200
+        return "User not found", 404
 
     def getAll(self):
+        print(self.flights)
         return self.flights
 
 flights = flight()
 
+flights.add(1, 12, "Istanbul", "Ankara","11-07-2019")
+flights.add(2, 5, "Paris", "Hamburg","05-12-2019")
+flights.add(3, 3, "London", "Moscow","19-03-2019")
+
 class Flight(Resource):
     def get(self, id):
-        for flight in flights:
-            if(int(id) == flight["id"]):
-                return flight, 200
-        return "User not found", 404
-    
-    def delete(self, id):
-        for flight in flights:
-            if(int(id) == flight["id"]):
-                flights = [flight for flight in flights if flight["id"] != id]
-                return "{} is deleted.".format(id), 200
-        return "User not found", 404
-        
-
-    def post(self):
-        parser = reqparse.RequestParser()
-        parser.add_argument("dest")
-        parser.add_argument("from")
-        parser.add_argument("date")
-        args = parser.parse_args()
-
-        flight_id = flight_id + 1
-
-        flight = {            
-            "dest" : args["dest"],
-            "from" : args["from"],
-            "date" : args["date"],
-            "id" : flight_id
-        }
-
-        flights.append(flight)
-        return flight_id, 201
-    
-    def get(self):
-        return flights, 200
+        return flights.get(int(id))
             
+    def delete(self, id):
+        return flights.delete(int(id))       
+    
+@app.route('/flights', methods=['GET'])
+def getAllFlights():
+    return json.dumps(flights.getAll()), 200
 
-api.add_resource(Flight, "/flights")
+@app.route('/flights', methods=['PUT'])
+def addFlight():
+    flight_id = flight_id + 1
+    payload = request.json    
+    return json.dumps(flights.add(flight_id,0,payload["dest"],payload["from"],payload["date"])),201
+
 api.add_resource(Flight, "/flights/<int:id>")
 
 if __name__ == '__main__':
