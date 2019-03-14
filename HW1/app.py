@@ -5,14 +5,14 @@ import random
 app = Flask(__name__)
 api = Api(app)
 
-global flight_id
+global _FLIGHT_ID
 global _PNR_ID
 
 class seat:
-    def __init__(self, flightid):
+    def __init__(self, flight_id):
         self.seatsAvaible = [0 for i in range(101)] # 0 meaning avaible
         self.numberOfSeatAvaible = 100
-        self.flightID = flightid
+        self.flight_id = flight_id
     
     def reserveSeat(self):
         self.numberOfSeatAvaible -= 1
@@ -32,8 +32,6 @@ class seat:
     def cancelChooseSeat(self, seatNumber):
         self.chooseSeat[seatNumber] = 0
 
-
-
 class flights:
     def __init__(self):
         self.all_flights = []    
@@ -46,7 +44,7 @@ class flights:
                 "date" : date,
                 "flight_id" : id            
             },
-            "seats" : seat()
+            "seats" : seat(id)
             })
         return {"flight_id": id }
     
@@ -74,8 +72,15 @@ class flights:
             temp.append(a_flight["general"])
         return temp
 
+    def getSeatObject(self, id):
+        for a_flight in self.all_flights:
+            if(id == a_flight["general"]["flight_id"]):
+                return a_flight["seats"]
+
+
     # didn't book the seat(position) yet
     # returns: boolFlightExists, boolSeatAvailable
+
     def registerTicket(self, id): 
         for a_flight in self.all_flights:
             if(id == a_flight["flight_id"]):
@@ -124,39 +129,23 @@ _PNR_ID = 0
 
 class ticket:
     def __init__(self):
-        self.tickets = []
+        self.all_tickets = []
 
-    def add(self, flightID):
-        exists, seat_available = the_flights.registerTicket(flightID)
-        if seat_available:
-            print("mother fucker")
-            global _PNR_ID
-            _PNR_ID += 1
-            self.tickets.append({
-            "PNR" : _PNR_ID,
-            "flight_id" : flightID,
-            "seat_number" : 0
-            })
-            return jsonify({"PNR" : _PNR_ID}) , 200
-        elif exists:
-            return jsonify({"PNR" : _PNR_ID}) , 409
-        else:
-            return jsonify({"PNR" : _PNR_ID}) , 404     
+    def add(self, flight_id, pnr_id):            
+        self.all_tickets.append({
+        "PNR" : pnr_id,
+        "flight_id" : flight_id
+        })
+
 
     def get(self, pnr):
-        for ticket in self.tickets:
+        for ticket in self.all_tickets:
             if int(pnr) == ticket["PNR"]:
-                return jsonify({
-                    "dest" : the_flights.get(ticket["flight_id"])["dest"],
-                    "from" : the_flights.get(ticket["flight_id"])["from"],
-                    "date" : the_flights.get(ticket["flight_id"])["date"],
-                    "flight_id" :ticket["flight_id"],
-                    "seat_number" :ticket["seat_number"]
-                }), 200
+                return ticket
         return jsonify({"PNR" : pnr}) ,404
 
     def chooseSeat(self,pnr, seat_id):
-        for ticket in self.tickets:
+        for ticket in self.all_tickets:
             if int(pnr) == ticket["PNR"]:
                 if the_flights.reserveSeat(ticket["flight_id"],seat_id-1):
                     ticket["seat_number"] = seat_id
@@ -169,7 +158,7 @@ class ticket:
     
     def getAll(self):
         temp = []
-        for ticket in self.tickets:
+        for ticket in self.all_tickets:
             temp.append({
                 "dest" : the_flights.get(ticket["flight_id"])["dest"],
                 "from" : the_flights.get(ticket["flight_id"])["from"],
@@ -180,30 +169,32 @@ class ticket:
         return jsonify(temp), 200
 
     def delete(self, pnr):
-        for ticket in self.tickets:
+        for ticket in self.all_tickets:
             if int(pnr) == ticket["PNR"]:
                 the_flights.cancelSeat(ticket["flight_id"], ticket["seat_number"] - 1)
                 the_flights.cancelTicket(ticket["flight_id"])
-                self.tickets.remove(ticket)
+                self.all_tickets.remove(ticket)
                 return jsonify({"PNR" : pnr}), 200
         return jsonify({"PNR" : pnr}), 400
 
-tickets = ticket()
+the_tickets = ticket()
 
 class Ticket(Resource):
     def put(self):
+        global _PNR_ID
+        _PNR_ID += 1
         parser = reqparse.RequestParser()
         parser.add_argument("flight_id")
         args = parser.parse_args()
-        return Response(tickets.add(int(args["flight_id"])))
+        return Response(the_tickets.add(int(args["flight_id"])))
 
     def get(self):
         parser = reqparse.RequestParser()
         parser.add_argument("PNR")
         args = parser.parse_args()
         if args["PNR"]:
-            return tickets.get(int(args["PNR"]))
-        return Response(tickets.getAll())
+            return the_tickets.get(int(args["PNR"]))
+        return Response(the_tickets.getAll())
         
 
     def post(self):
@@ -211,13 +202,13 @@ class Ticket(Resource):
         parser.add_argument("PNR")
         parser.add_argument("seat_number")
         args = parser.parse_args()        
-        return Response(tickets.chooseSeat(int(args["PNR"]),int(args["seat_number"])))
+        return Response(the_tickets.chooseSeat(int(args["PNR"]),int(args["seat_number"])))
     
     def delete(self):
         parser = reqparse.RequestParser()
         parser.add_argument("PNR")
         args = parser.parse_args()        
-        return Response(tickets.delete(int(args["PNR"])))
+        return Response(the_tickets.delete(int(args["PNR"])))
 
 
 # RESTFUL
