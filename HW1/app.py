@@ -1,12 +1,23 @@
 from flask import  Flask, jsonify, request, Response
 from flask_restful import Resource, Api, reqparse
 import random
+import hashlib
 
 app = Flask(__name__)
 api = Api(app)
 
 global _FLIGHT_ID
 global _PNR_ID
+
+def encrypt_string(hash_string):
+    sha_signature = \
+        hashlib.sha256(hash_string.encode()).hexdigest()
+    return sha_signature
+
+_ADMIN = "ADMIN"
+_PASSWORD = encrypt_string("ADMIN")
+
+print(_PASSWORD)
 
 class seat:
     def __init__(self, flight_id):
@@ -24,12 +35,14 @@ class seat:
         return self.seatsAvaible[seatNumber] == 0
 
     def chooseSeat(self, seatNumber, pnr):
-        self.chooseSeat[seatNumber] = pnr
+        self.seatsAvaible[seatNumber] = pnr
 
     def getSeatNumber(self, pnr):
+        i = -1
         for seat in self.seatsAvaible:
+            i += 1
             if seat == pnr:
-                return seat
+                return i
         return False
 
     def cancelReserveSeat(self):
@@ -94,9 +107,9 @@ class flights:
 
 the_flights = flights()
 
-the_flights.add(1, 12, "Istanbul", "Ankara","11-07-2019")
-the_flights.add(2, 5, "Paris", "Hamburg","05-12-2019")
-the_flights.add(3, 3, "London", "Moscow","19-03-2019")
+the_flights.add(1, "Istanbul", "Ankara","11-07-2019")
+the_flights.add(2, "Paris", "Hamburg","05-12-2019")
+the_flights.add(3, "London", "Moscow","19-03-2019")
 
 # last used id
 _FLIGHT_ID= 3
@@ -131,6 +144,9 @@ class ticket:
             if int(pnr) == a_ticket["PNR"]:
                 return True
         return False
+    
+    def getAll(self):
+        return self.all_tickets
 
 the_tickets = ticket()
 
@@ -140,7 +156,11 @@ class Ticket(Resource):
         _PNR_ID += 1
         parser = reqparse.RequestParser()
         parser.add_argument("flight_id")
+        parser.add_argument("username")
+        parser.add_argument("password")
         args = parser.parse_args()
+        if not (args["username"] == _ADMIN) or not (args["password"] == _PASSWORD):
+            return 401
         if the_flights.isExist(int(args["flight_id"])):
             if the_flights.getSeatObject(int(args["flight_id"])).isFull():
                 the_flights.getSeatObject(int(args["flight_id"])).reserveSeat()
@@ -154,7 +174,11 @@ class Ticket(Resource):
     def get(self):
         parser = reqparse.RequestParser()
         parser.add_argument("PNR")
+        parser.add_argument("username")
+        parser.add_argument("password")
         args = parser.parse_args()
+        if not (args["username"] == _ADMIN) or not (args["password"] == _PASSWORD):
+            return 401
         if args["PNR"]:
             if the_tickets.isExist(int(args["PNR"])):
                 ticket = the_tickets.get(int(args["PNR"]))
@@ -169,6 +193,20 @@ class Ticket(Resource):
                     "seat_number" : seat.getSeatNumber(int(args["PNR"]))
                 }, 200
             return 404
+        temp = []
+        for ticket in the_tickets.getAll():
+            pnr_id = ticket["PNR"]
+            flight_id = ticket["flight_id"]
+            flight = the_flights.get(flight_id)
+            seat = the_flights.getSeatObject(flight_id)
+            temp.append({
+                    "dest" : flight["dest"], 
+                    "from" : flight["from"],
+                    "date" : flight["date"],
+                    "flight_id" : flight_id,
+                    "PNR" : pnr_id
+            })
+        return temp, 200
         # GetAll
         
 
@@ -176,11 +214,17 @@ class Ticket(Resource):
         parser = reqparse.RequestParser()
         parser.add_argument("PNR")
         parser.add_argument("seat_number")
-        args = parser.parse_args()        
-        if the_tickets.isExist(int(args["PNR"])):    
-            flight_id = the_tickets.get("PNR")["flight_id"]   
-            seat_obj =the_flights.getSeatObject(flight_id) 
-            if seat_obj.isSeatEmpty(args["seat_number"]):
+        parser.add_argument("username")
+        parser.add_argument("password")
+        args = parser.parse_args()
+        if not (args["username"] == _ADMIN) or not (args["password"] == _PASSWORD):
+            return 401       
+        if the_tickets.isExist(int(args["PNR"])):  
+            ticket = the_tickets.get(int(args["PNR"]))  
+            flight_id = ticket["flight_id"]   
+            seat_obj = the_flights.getSeatObject(flight_id) 
+            if seat_obj.isSeatEmpty(int(args["seat_number"])):
+                seat_obj.chooseSeat(int(args["seat_number"]), int(args["PNR"]))
                 return 200
             return 409
         return 404
@@ -188,7 +232,11 @@ class Ticket(Resource):
     def delete(self):
         parser = reqparse.RequestParser()
         parser.add_argument("PNR")
-        args = parser.parse_args()        
+        parser.add_argument("username")
+        parser.add_argument("password")
+        args = parser.parse_args()
+        if not (args["username"] == _ADMIN) or not (args["password"] == _PASSWORD):
+            return 401      
         if the_tickets.isExist(int(args["PNR"])):  
             flight_id = the_tickets.get(int(args["PNR"]))["flight_id"]  
             the_tickets.delete(int(args["PNR"]))
@@ -201,6 +249,13 @@ class Ticket(Resource):
 # RESTFUL
 class Flight(Resource):
     def get(self, id):
+        parser = reqparse.RequestParser()
+        parser.add_argument("username")
+        parser.add_argument("password")
+        args = parser.parse_args()
+        if not (args["username"] == _ADMIN) or not (args["password"] == _PASSWORD):
+            return 401    
+
         if the_flights.isExist(int(id)):
             return  the_flights.get(int(id)), 200
         else:
@@ -208,6 +263,13 @@ class Flight(Resource):
      
             
     def delete(self, id):
+        parser = reqparse.RequestParser()
+        parser.add_argument("username")
+        parser.add_argument("password")
+        args = parser.parse_args()
+        if not (args["username"] == _ADMIN) or not (args["password"] == _PASSWORD):
+            return 401 
+            
         if the_flights.delete(int(id)):
             return 200 # Deleted 
         else:
@@ -223,7 +285,7 @@ def addFlight():
     global _FLIGHT_ID
     _FLIGHT_ID+= 1
     payload = request.json    
-    return jsonify(the_flights.add(_FLIGHT_ID,0,payload["dest"],payload["from"],payload["date"])), 201
+    return jsonify(the_flights.add(_FLIGHT_ID,payload["dest"],payload["from"],payload["date"])), 201
 
 api.add_resource(Flight, "/flights/<int:id>")
 api.add_resource(Ticket, "/tickets")
