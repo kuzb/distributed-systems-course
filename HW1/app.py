@@ -8,54 +8,63 @@ api = Api(app)
 global flight_id
 global pnr_id
 
+class seat:
+    def __init__(self, flightid):
+        self.seatsAvaible = [True for i in range(101)]
+        self.numberOfSeatAvaible = 100
+        self.flightID = flightid
+    
+    def reserveSeat(self):
+        self.numberOfSeatAvaible -= 1
+    
+    def isSeatEmpty(self, seatNumber):
+        return self.seatsAvaible[seatNumber]
+
+    def chooseSeat(self, seatNumber):
+        self.chooseSeat[seatNumber] = False
+
+    
+
+
+
 class flight:
     def __init__(self):
         self.flights = []    
 
-    def add(self, id, seats, dest, source, date):
-        
+    def add(self, id, dest, source, date):
         self.flights.append({
-            "dest" : dest , 
-            "from" : source , 
-            "date" : date,
-            "flight_id" : id , 
-            "seats" : int(seats),
-            "seat_available" : [True for i in range(100)]
-        })
+            "general" : {
+                "dest" : dest , 
+                "from" : source , 
+                "date" : date,
+                "flight_id" : id            
+            },
+            "seats" : seat()
+            })
         return {"flight_id": id }
     
     def delete(self, id):
         for flight in self.flights:
-            if(id == flight["flight_id"]):
+            if(id == flight["general"]["flight_id"]):
                 self.flights.remove(flight)
                 return True
         return False
 
     def get(self, id):
         for flight in self.flights:
-            if(id == flight["flight_id"]):
-                return {
-                    "dest" : flight["dest"] , 
-                    "from" : flight["from"] , 
-                    "date" : flight["date"] ,
-                    "flight_id" : flight["flight_id"] 
-                }
+            if(id == flight["general"]["flight_id"]):
+                return flight["general"]
     
     def isExist(self, id):
         for flight in self.flights:
-            if(id == flight["flight_id"]):
+            if(id == flight["general"]["flight_id"]):
                 return True
         return False
 
     def getAll(self):
         temp = []
         for flight in self.flights:
-            temp.append({
-                    "dest" : flight["dest"] , 
-                    "from" : flight["from"] , 
-                    "date" : flight["date"] ,
-                    "flight_id" : flight["flight_id"] 
-                })
+            temp.append(flight["general"])
         return temp
 
     # didn't book the seat(position) yet
@@ -178,7 +187,7 @@ class Ticket(Resource):
     def put(self):
         parser = reqparse.RequestParser()
         parser.add_argument("flight_id")
-        args = parser.parse_args()        
+        args = parser.parse_args()
         return Response(tickets.add(int(args["flight_id"])))
 
     def get(self):
