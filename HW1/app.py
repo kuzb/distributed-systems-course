@@ -111,6 +111,10 @@ the_flights.add(1, "Istanbul", "Ankara","11-07-2019")
 the_flights.add(2, "Paris", "Hamburg","05-12-2019")
 the_flights.add(3, "London", "Moscow","19-03-2019")
 
+def cleanAfterFlight(flight_id):
+    return the_tickets.deleteAllTicketsByFlightId(flight_id)
+
+
 # last used id
 _FLIGHT_ID= 3
 
@@ -125,6 +129,12 @@ class ticket:
         "PNR" : pnr_id,
         "flight_id" : flight_id
         })
+
+    def deleteAllTicketsByFlightId(self, flight_id):
+        for a_ticket in self.all_tickets:
+            if int(flight_id) == a_ticket["flight_id"]:
+                self.all_tickets.remove(a_ticket)
+        return True
 
     def get(self, pnr):
         for a_ticket in self.all_tickets:
@@ -183,6 +193,10 @@ class Ticket(Resource):
             if the_tickets.isExist(int(args["PNR"])):
                 ticket = the_tickets.get(int(args["PNR"]))
                 flight_id = ticket["flight_id"]
+
+                if not the_flights.isExist(flight_id): #precoution
+                    return 404
+
                 flight = the_flights.get(flight_id)
                 seat = the_flights.getSeatObject(flight_id)
                 return {
@@ -197,6 +211,10 @@ class Ticket(Resource):
         for ticket in the_tickets.getAll():
             pnr_id = ticket["PNR"]
             flight_id = ticket["flight_id"]
+
+            if not the_flights.isExist(flight_id):  #precoution
+                    continue
+
             flight = the_flights.get(flight_id)
             seat = the_flights.getSeatObject(flight_id)
             temp.append({
@@ -269,8 +287,9 @@ class Flight(Resource):
         args = parser.parse_args()
         if not (args["username"] == _ADMIN) or not (args["password"] == _PASSWORD):
             return 401 
-            
+
         if the_flights.delete(int(id)):
+            cleanAfterFlight(int(id))
             return 200 # Deleted 
         else:
             return 404 # Not Found
@@ -278,13 +297,21 @@ class Flight(Resource):
     
 @app.route('/flights', methods=['GET'])
 def getAllFlights():
+    payload = request.json  
+    if not (payload["username"] == _ADMIN) or not (payload["password"] == _PASSWORD):
+            return 401
+
     return jsonify(the_flights.getAll()), 200
 
 @app.route('/flights', methods=['PUT'])
-def addFlight():
+def addFlight():   
+    payload = request.json  
+    if not (payload["username"] == _ADMIN) or not (payload["password"] == _PASSWORD):
+            return 401
+
     global _FLIGHT_ID
     _FLIGHT_ID+= 1
-    payload = request.json    
+
     return jsonify(the_flights.add(_FLIGHT_ID,payload["dest"],payload["from"],payload["date"])), 201
 
 api.add_resource(Flight, "/flights/<int:id>")
