@@ -6,33 +6,40 @@ app = Flask(__name__)
 api = Api(app)
 
 global flight_id
-global pnr_id
+global _PNR_ID
 
 class seat:
     def __init__(self, flightid):
-        self.seatsAvaible = [True for i in range(101)]
+        self.seatsAvaible = [0 for i in range(101)] # 0 meaning avaible
         self.numberOfSeatAvaible = 100
         self.flightID = flightid
     
     def reserveSeat(self):
         self.numberOfSeatAvaible -= 1
+
+    def isFull(self):
+        return self.numberOfSeatAvaible >= 0
     
     def isSeatEmpty(self, seatNumber):
-        return self.seatsAvaible[seatNumber]
+        return self.seatsAvaible[seatNumber] == 0
 
-    def chooseSeat(self, seatNumber):
-        self.chooseSeat[seatNumber] = False
+    def chooseSeat(self, seatNumber, pnr):
+        self.chooseSeat[seatNumber] = pnr
 
-    
+    def cancelReserveSeat(self):
+        self.numberOfSeatAvaible += 1
+
+    def cancelChooseSeat(self, seatNumber):
+        self.chooseSeat[seatNumber] = 0
 
 
 
-class flight:
+class flights:
     def __init__(self):
-        self.flights = []    
+        self.all_flights = []    
 
     def add(self, id, dest, source, date):
-        self.flights.append({
+        self.all_flights.append({
             "general" : {
                 "dest" : dest , 
                 "from" : source , 
@@ -44,105 +51,105 @@ class flight:
         return {"flight_id": id }
     
     def delete(self, id):
-        for flight in self.flights:
-            if(id == flight["general"]["flight_id"]):
-                self.flights.remove(flight)
+        for a_flight in self.all_flights:
+            if(id == a_flight["general"]["flight_id"]):
+                self.all_flights.remove(a_flight)
                 return True
         return False
 
     def get(self, id):
-        for flight in self.flights:
-            if(id == flight["general"]["flight_id"]):
-                return flight["general"]
+        for a_flight in self.all_flights:
+            if(id == a_flight["general"]["flight_id"]):
+                return a_flight["general"]
     
     def isExist(self, id):
-        for flight in self.flights:
-            if(id == flight["general"]["flight_id"]):
+        for a_flight in self.all_flights:
+            if(id == a_flight["general"]["flight_id"]):
                 return True
         return False
 
     def getAll(self):
         temp = []
-        for flight in self.flights:
-            temp.append(flight["general"])
+        for a_flight in self.all_flights:
+            temp.append(a_flight["general"])
         return temp
 
     # didn't book the seat(position) yet
     # returns: boolFlightExists, boolSeatAvailable
     def registerTicket(self, id): 
-        for flight in self.flights:
-            if(id == flight["flight_id"]):
-                if flight["seats"] < 100:
-                    flight["seats"] = flight["seats"] + 1
+        for a_flight in self.all_flights:
+            if(id == a_flight["flight_id"]):
+                if a_flight["seats"] < 100:
+                    a_flight["seats"] = a_flight["seats"] + 1
                     return True, True # Flight exits and there is space
                 return True, False # Flight exists but no space
         return False, False # Flight doesn't exists, all false
 
     def reserveSeat(self, id, seatNumber):
-        for flight in self.flights:
-            if(id == flight["flight_id"]):
-                if flight["seat_available"][seatNumber]:
+        for a_flight in self.all_flights:
+            if(id == a_flight["flight_id"]):
+                if a_flight["seat_available"][seatNumber]:
                     # Seat is reserved
-                    flight["seat_available"][seatNumber] = False
+                    a_flight["seat_available"][seatNumber] = False
                     return True
                 return False # Seat is not available
         return False  # Flight doesn't exists
 
     def cancelSeat(self, id, seatNumber):
-        for flight in self.flights:
-            if(id == flight["flight_id"]):
-                if not (flight["seat_available"][seatNumber]):
-                    flight["seat_available"][seatNumber] = True
+        for a_flight in self.all_flights:
+            if(id == a_flight["flight_id"]):
+                if not (a_flight["seat_available"][seatNumber]):
+                    a_flight["seat_available"][seatNumber] = True
                     return True # Seat is again available
                 return False # Seat was already available
         return False  # Flight doesn't exists
     
     def cancelTicket(self, id):
-        for flight in self.flights:
-            if(id == flight["flight_id"]):
-                flight["seats"] = flight["seats"] - 1
+        for a_flight in self.all_flights:
+            if(id == a_flight["flight_id"]):
+                a_flight["seats"] = a_flight["seats"] - 1
                 return True # Flight exits and one more seat available
         return False # Flight doesn't exists 
 
-flights = flight()
+the_flights = flights()
 
-flights.add(1, 12, "Istanbul", "Ankara","11-07-2019")
-flights.add(2, 5, "Paris", "Hamburg","05-12-2019")
-flights.add(3, 3, "London", "Moscow","19-03-2019")
+the_flights.add(1, 12, "Istanbul", "Ankara","11-07-2019")
+the_flights.add(2, 5, "Paris", "Hamburg","05-12-2019")
+the_flights.add(3, 3, "London", "Moscow","19-03-2019")
 
 # last used id
-flight_id = 3
+_FLIGHT_ID= 3
 
-pnr_id = 0
+_PNR_ID = 0
 
 class ticket:
     def __init__(self):
         self.tickets = []
 
     def add(self, flightID):
-        exists, seat_available = flights.registerTicket(flightID)
+        exists, seat_available = the_flights.registerTicket(flightID)
         if seat_available:
             print("mother fucker")
-            global pnr_id
-            pnr_id += 1
+            global _PNR_ID
+            _PNR_ID += 1
             self.tickets.append({
-            "PNR" : pnr_id,
+            "PNR" : _PNR_ID,
             "flight_id" : flightID,
             "seat_number" : 0
             })
-            return jsonify({"PNR" : pnr_id}) , 200
+            return jsonify({"PNR" : _PNR_ID}) , 200
         elif exists:
-            return jsonify({"PNR" : pnr_id}) , 409
+            return jsonify({"PNR" : _PNR_ID}) , 409
         else:
-            return jsonify({"PNR" : pnr_id}) , 404     
+            return jsonify({"PNR" : _PNR_ID}) , 404     
 
     def get(self, pnr):
         for ticket in self.tickets:
             if int(pnr) == ticket["PNR"]:
                 return jsonify({
-                    "dest" : flights.get(ticket["flight_id"])["dest"],
-                    "from" : flights.get(ticket["flight_id"])["from"],
-                    "date" : flights.get(ticket["flight_id"])["date"],
+                    "dest" : the_flights.get(ticket["flight_id"])["dest"],
+                    "from" : the_flights.get(ticket["flight_id"])["from"],
+                    "date" : the_flights.get(ticket["flight_id"])["date"],
                     "flight_id" :ticket["flight_id"],
                     "seat_number" :ticket["seat_number"]
                 }), 200
@@ -151,7 +158,7 @@ class ticket:
     def chooseSeat(self,pnr, seat_id):
         for ticket in self.tickets:
             if int(pnr) == ticket["PNR"]:
-                if flights.reserveSeat(ticket["flight_id"],seat_id-1):
+                if the_flights.reserveSeat(ticket["flight_id"],seat_id-1):
                     ticket["seat_number"] = seat_id
                     return jsonify({
                         "PNR" : ticket["PNR"],
@@ -164,10 +171,10 @@ class ticket:
         temp = []
         for ticket in self.tickets:
             temp.append({
-                "dest" : flights.get(ticket["flight_id"])["dest"],
-                "from" : flights.get(ticket["flight_id"])["from"],
-                "date" : flights.get(ticket["flight_id"])["date"],
-                "flight id" : ticket["flight_id"],
+                "dest" : the_flights.get(ticket["flight_id"])["dest"],
+                "from" : the_flights.get(ticket["flight_id"])["from"],
+                "date" : the_flights.get(ticket["flight_id"])["date"],
+                "flight_id" : ticket["flight_id"],
                 "PNR" : ticket["PNR"]
             })
         return jsonify(temp), 200
@@ -175,8 +182,8 @@ class ticket:
     def delete(self, pnr):
         for ticket in self.tickets:
             if int(pnr) == ticket["PNR"]:
-                flights.cancelSeat(ticket["flight_id"], ticket["seat_number"] - 1)
-                flights.cancelTicket(ticket["flight_id"])
+                the_flights.cancelSeat(ticket["flight_id"], ticket["seat_number"] - 1)
+                the_flights.cancelTicket(ticket["flight_id"])
                 self.tickets.remove(ticket)
                 return jsonify({"PNR" : pnr}), 200
         return jsonify({"PNR" : pnr}), 400
@@ -216,14 +223,14 @@ class Ticket(Resource):
 # RESTFUL
 class Flight(Resource):
     def get(self, id):
-        if flights.isExist(int(id)):
-            return  flights.get(int(id)), 200
+        if the_flights.isExist(int(id)):
+            return  the_flights.get(int(id)), 200
         else:
             return 404 # Not Found
      
             
     def delete(self, id):
-        if flights.delete(int(id)):
+        if the_flights.delete(int(id)):
             return 200 # Deleted 
         else:
             return 404 # Not Found
@@ -231,14 +238,14 @@ class Flight(Resource):
     
 @app.route('/flights', methods=['GET'])
 def getAllFlights():
-    return jsonify(flights.getAll()), 200
+    return jsonify(the_flights.getAll()), 200
 
 @app.route('/flights', methods=['PUT'])
 def addFlight():
-    global flight_id 
-    flight_id += 1
+    global _FLIGHT_ID
+    _FLIGHT_ID+= 1
     payload = request.json    
-    return jsonify(flights.add(flight_id,0,payload["dest"],payload["from"],payload["date"])), 201
+    return jsonify(the_flights.add(_FLIGHT_ID,0,payload["dest"],payload["from"],payload["date"])), 201
 
 api.add_resource(Flight, "/flights/<int:id>")
 api.add_resource(Ticket, "/tickets")
