@@ -5,11 +5,16 @@ import multiprocessing
 from abc import ABC, abstractmethod  # Abstract Base Classes 
 # Used for defining abstract classes
 
+def chunks(seq, num):
+    avg = len(seq) / float(num)
+    out = []
+    last = 0.0
 
-def chunks(l, n):
-    """Yield successive n-sized chunks from l."""
-    for i in range(0, len(l), n):
-        yield l[i:i + n]
+    while last < len(seq):
+        out.append(seq[int(last):int(last + avg)])
+        last += avg
+
+    return out
 
 
 class MapReduce(ABC):
@@ -30,32 +35,33 @@ class MapReduce(ABC):
 
     #@classmethod
     def producer(self, data_arr):
-        print("I am producer")
+        #print("I am producer")
         context = zmq.Context()
         zmq_socket = context.socket(zmq.PUSH)
         zmq_socket.bind("tcp://127.0.0.1:5557")
         # Start your result manager and workers before you start your producers
         
         # split data_arr and send it
-        size = len(data_arr)
-        portions = size // self.NumWorker
-        data_arrs = chunks(data_arr, portions)
+        data_arrs = chunks(data_arr, self.NumWorker)
 
         i = 1
+        work_message = []
         for arr in data_arrs:
-            for x in range(10):
-                print("Producer: Sending " + str(arr) + " to " + str(i))
-                work_message = { 'arr' : arr, 'id' : i }            
-                zmq_socket.send_json(work_message)
+            work_message.append({ 'arr' : arr, 'id' : i })
             i += 1
-        pass
+        
+        for i in range(self.NumWorker*10):
+            for message in work_message:
+                #print("Producer: Sending " + str(message))                           
+                zmq_socket.send_json(message)
+            
 
 
     #@classmethod
     def consumer(self, i):
         consumer_id = i
         
-        print("I am consumer #%s" % (consumer_id))
+        #print("I am consumer #%s" % (consumer_id))
         context = zmq.Context()
 
         # recieve work
@@ -66,46 +72,60 @@ class MapReduce(ABC):
         consumer_sender = context.socket(zmq.PUSH)
         consumer_sender.connect("tcp://127.0.0.1:5558")
 
+        
         while True:
+            #print("Consumer: Polling with id: " + str(consumer_id))
             work = consumer_receiver.recv_json()
             if consumer_id == work['id']:            
                 arr = work['arr']
                 data = self.Map(arr)
-                print("Consumer: Sending " + str(data) + " with id " + str(consumer_id))
+                #print("Consumer: Sending: " + str(data) + " with id: " + str(consumer_id))
                 result = { 'id' : consumer_id, 'result' : data }
-                for x in range(10):
-                    consumer_sender.send_json(result)
+                consumer_sender.send_json(result)
+                break
 
     #@classmethod
     def resultCollector(self):
-        print("I am result collector")
+        #print("I am result collector")
         context = zmq.Context()
         results_receiver = context.socket(zmq.PULL)
         results_receiver.bind("tcp://127.0.0.1:5558")
         workers = set()
         arr = []
         while(len(workers) < self.NumWorker):
+            #print("Result Collector: Number of workers: " + str(len(workers)))
             result = results_receiver.recv_json()
             if not result['id'] in workers:
-                print("Result Collector: Reciving " + str(result['result']) + " from " + str(result['id']))
+                #print("Result Collector: Reciving: " + str(result['result']) + " from consumer id: " + str(result['id']))
                 workers.add(result['id'])
                 arr.append(result['result'])
 
         reduced = self.Reduce(arr)
-        print(reduced)
+        print("Result Collector: Final Result: " + str(reduced))
         
 
     #@classmethod
     def start(self, data_arr):
         resultCollectorThread = threading.Thread(target = self.resultCollector)
         resultCollectorThread.start()
+
         consumers = []
         for i in range(self.NumWorker):
             p = multiprocessing.Process(target=self.consumer, args=(i+1, ))
             consumers.append(p)
             p.start()
+
+        time.sleep(1)
         producerThread = threading.Thread(target = self.producer, args = (data_arr, ))
         producerThread.start()
+
+        producerThread.join()
+
+        for Consumer in consumers:
+            Consumer.join()
+
+        resultCollectorThread.join()
+
 
 
 # A subclass of MapReduce, which finds the maximum element
@@ -141,15 +161,15 @@ class FindNegativeCount(MapReduce):
     # Map function should map it to a single integer value.
 
     def Reduce(self, data_arr):
-        return sum(1 for i in data_arr if i < 0)
+        return sum(data_arr)
     # Reduce function should map it to a single integer value.
     pass
 
 if __name__ == "__main__":
-    maxxer = FindMax(5)
-    maxxer.start([15,12,11,19,12,15,31,32,4365,546346,3425342,32,13,34,4234523,565,4334,243323])
+    #maxxer = FindMax(5)
+    #maxxer.start([15,12,11,19,12,15,31,32,4365,546346,3425342,32,13,34,4234523,565,4334,243323])
 
-    #summer = FindSum(10)
+    #summer = FindSum(5)
     #summer.start([15,12,11,19,12,15,31,32,4365,546346,3425342,32,13,34,4234523,565,4334,243323])
-    #negativeCounter = FindNegativeCount(10)
-    #negativeCounter.start([15,-12,11,19,12,-15,31,32,4365,-546346,3425342,-32,13,34,4234523,-565,4334,243323])
+    negativeCounter = FindNegativeCount(5)
+    negativeCounter.start([15,-12,11,19,12,-15,31,32,4365,-546346,3425342,-32,13,34,4234523,-565,4334,243323])
