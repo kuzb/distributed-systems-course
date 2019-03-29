@@ -1,7 +1,8 @@
 import zmq
 import time
-from sets import Set
-from abc import ABC # Abstract Base Classes 
+import threading
+import multiprocessing
+from abc import ABC, abstractmethod, classmethod  # Abstract Base Classes 
 # Used for defining abstract classes
 
 
@@ -30,7 +31,6 @@ class MapReduce(ABC):
         pass
     # Reduce function should map it to a single integer value.
 
-    @staticmethod
     @classmethod
     def producer(self, data_arr):
         context = zmq.Context()
@@ -45,15 +45,16 @@ class MapReduce(ABC):
 
         i = 1
         for arr in data_arrs:
-            work_message = { 'arr' : arr, 'id' : i }            
-            zmq_socket.send_json(work_message)
+            for x in range(10):
+                work_message = { 'arr' : arr, 'id' : i }            
+                zmq_socket.send_json(work_message)
             i += 1
         pass
 
 
     @classmethod
-    def consumer(self, data_arr):
-        consumer_id = self.giveId()
+    def consumer(self, i):
+        consumer_id = i
         
         print("I am consumer #%s" % (consumer_id))
         context = zmq.Context()
@@ -80,18 +81,29 @@ class MapReduce(ABC):
         context = zmq.Context()
         results_receiver = context.socket(zmq.PULL)
         results_receiver.bind("tcp://127.0.0.1:5558")
-        counter = 0
-        collecter_data = {}
-        while(counter < self.NumWorker):
+        workers = Set()
+        arr = []
+        while(len(workers) < self.NumWorker):
             result = results_receiver.recv_json()
-            print(result)
-        pass
+            if not result['id'] in workers:
+                workers.add(result['id'])
+                arr.append(result['result'])
+
+        reduced = self.Reduce(arr)
+        print(reduced)
+        
 
     @abstractmethod
     def start(self, data_arr):
+        resultCollectorThread = threading.Thread(target = self.resultCollector)
+        consumers = []
+        for i in range(self.NumWorker):
+            p = multiprocessing.Process(target=self.consumer, args=i+1)
+            consumers.append(p)
+            p.start
+        producerThread = threading.Thread(target = self.producer, args = data_arr)
 
 
-        pass
 
 # A subclass of MapReduce, which finds the maximum element
 # in the given integer array.   
@@ -116,7 +128,7 @@ class FindSum(MapReduce):
     def Reduce(self, data_arr):
         pass
     # Reduce function should map it to a single integer value. 
-    pass
+
 
 # A subclass of MapReduce, which finds the number
 # of elements which are less than 0.
