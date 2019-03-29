@@ -51,3 +51,14 @@ then the client
 ```
 $ python client.py
 ```
+
+### LAB3
+
+Super basically implements Push/Pull pattern to push student id and its rsa signed version
+
+### HW1
+
+### HW2
+#TODO
+Gracefully handle interupts!
+Producer has to know that consumer has consumed
