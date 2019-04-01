@@ -1,1 +1,4 @@
 .vscode
+**/__pycache__
+**/results_web.db
+**/tasks_web.sqlite
