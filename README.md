@@ -56,6 +56,23 @@ $ python client.py
 
 Super basically implements Push/Pull pattern to push student id and its rsa signed version
 
+### LAB4
+
+Simple program that implements async tasks. Routes are bound to async tasks
+defined using celery. 
+
+/todo/<:todo> route is used to create todos
+
+/status/<:task_id> route is used to check the status of task with task_id
+
+
+To run it: 
+In seperate terminal emulators:
+
+> celery -A server.celery worker # for flask
+
+> python server.py # for app
+
 ### HW1
 
 ### HW2
