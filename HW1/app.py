@@ -111,9 +111,6 @@ the_flights.add(1, "Istanbul", "Ankara","11-07-2019")
 the_flights.add(2, "Paris", "Hamburg","05-12-2019")
 the_flights.add(3, "London", "Moscow","19-03-2019")
 
-def cleanAfterFlight(flight_id):
-    return the_tickets.deleteAllTicketsByFlightId(flight_id)
-
 
 # last used id
 _FLIGHT_ID= 3
@@ -160,6 +157,10 @@ class ticket:
 
 the_tickets = ticket()
 
+
+def cleanAfterFlight(flight_id):
+    return the_tickets.deleteAllTicketsByFlightId(flight_id)
+
 class Ticket(Resource):
     def put(self): # buying a ticket for a given flight
         global _PNR_ID
@@ -169,8 +170,8 @@ class Ticket(Resource):
         parser.add_argument("username")
         parser.add_argument("password")
         args = parser.parse_args()
-        if not (args["username"] == _ADMIN) or not (args["password"] == _PASSWORD):
-            return 401
+        if not (args["username"] == _ADMIN) or not (encrypt_string(args["password"]) == _PASSWORD):
+            return '',401
         if the_flights.isExist(int(args["flight_id"])):
             if the_flights.getSeatObject(int(args["flight_id"])).isFull():
                 the_flights.getSeatObject(int(args["flight_id"])).reserveSeat()
@@ -178,8 +179,8 @@ class Ticket(Resource):
                 return {
                     "PNR" : _PNR_ID
                 }, 200
-            return 409
-        return 404
+            return '', 409
+        return '', 404
 
     def get(self):
         parser = reqparse.RequestParser()
@@ -187,7 +188,7 @@ class Ticket(Resource):
         parser.add_argument("username")
         parser.add_argument("password")
         args = parser.parse_args()
-        if not (args["username"] == _ADMIN) or not (args["password"] == _PASSWORD):
+        if not (args["username"] == _ADMIN) or not (encrypt_string(args["password"]) == _PASSWORD):
             return 401
         if args["PNR"]:
             if the_tickets.isExist(int(args["PNR"])):
@@ -206,7 +207,7 @@ class Ticket(Resource):
                     "flight_id" : flight_id,
                     "seat_number" : seat.getSeatNumber(int(args["PNR"]))
                 }, 200
-            return 404
+            return '', 404
         temp = []
         for ticket in the_tickets.getAll():
             pnr_id = ticket["PNR"]
@@ -235,17 +236,17 @@ class Ticket(Resource):
         parser.add_argument("username")
         parser.add_argument("password")
         args = parser.parse_args()
-        if not (args["username"] == _ADMIN) or not (args["password"] == _PASSWORD):
-            return 401       
+        if not (args["username"] == _ADMIN) or not (encrypt_string(args["password"]) == _PASSWORD):
+            return '',401       
         if the_tickets.isExist(int(args["PNR"])):  
             ticket = the_tickets.get(int(args["PNR"]))  
             flight_id = ticket["flight_id"]   
             seat_obj = the_flights.getSeatObject(flight_id) 
             if seat_obj.isSeatEmpty(int(args["seat_number"])):
                 seat_obj.chooseSeat(int(args["seat_number"]), int(args["PNR"]))
-                return 200
-            return 409
-        return 404
+                return '',200
+            return '',409
+        return '',404
     
     def delete(self):
         parser = reqparse.RequestParser()
@@ -253,16 +254,16 @@ class Ticket(Resource):
         parser.add_argument("username")
         parser.add_argument("password")
         args = parser.parse_args()
-        if not (args["username"] == _ADMIN) or not (args["password"] == _PASSWORD):
-            return 401      
+        if not (args["username"] == _ADMIN) or not (encrypt_string(args["password"]) == _PASSWORD):
+            return '',401      
         if the_tickets.isExist(int(args["PNR"])):  
             flight_id = the_tickets.get(int(args["PNR"]))["flight_id"]  
             the_tickets.delete(int(args["PNR"]))
             seat_obj = the_flights.getSeatObject(flight_id)
             seat_obj.cancelChooseSeatByPNR(int(args["PNR"]))
             seat_obj.cancelReserveSeat()
-            return 200
-        return 404     
+            return '',200
+        return '',404     
 
 # RESTFUL
 class Flight(Resource):
@@ -271,13 +272,13 @@ class Flight(Resource):
         parser.add_argument("username")
         parser.add_argument("password")
         args = parser.parse_args()
-        if not (args["username"] == _ADMIN) or not (args["password"] == _PASSWORD):
-            return 401    
+        if not (args["username"] == _ADMIN) or not (encrypt_string(args["password"]) == _PASSWORD):
+            return '',401    
 
         if the_flights.isExist(int(id)):
             return  the_flights.get(int(id)), 200
         else:
-            return 404 # Not Found
+            return '',404 # Not Found
      
             
     def delete(self, id):
@@ -285,29 +286,29 @@ class Flight(Resource):
         parser.add_argument("username")
         parser.add_argument("password")
         args = parser.parse_args()
-        if not (args["username"] == _ADMIN) or not (args["password"] == _PASSWORD):
-            return 401 
+        if not (args["username"] == _ADMIN) or not (encrypt_string(args["password"]) == _PASSWORD):
+            return '',401 
 
         if the_flights.delete(int(id)):
             cleanAfterFlight(int(id))
-            return 200 # Deleted 
+            return '',200 # Deleted 
         else:
-            return 404 # Not Found
+            return '',404 # Not Found
      
     
 @app.route('/flights', methods=['GET'])
 def getAllFlights():
     payload = request.json  
-    if not (payload["username"] == _ADMIN) or not (payload["password"] == _PASSWORD):
-            return 401
+    if not (payload["username"] == _ADMIN) or not (encrypt_string(payload["password"]) == _PASSWORD):
+            return '', 401
 
     return jsonify(the_flights.getAll()), 200
 
 @app.route('/flights', methods=['PUT'])
 def addFlight():   
     payload = request.json  
-    if not (payload["username"] == _ADMIN) or not (payload["password"] == _PASSWORD):
-            return 401
+    if not (payload["username"] == _ADMIN) or not (encrypt_string(payload["password"]) == _PASSWORD):
+            return '',401
 
     global _FLIGHT_ID
     _FLIGHT_ID+= 1
