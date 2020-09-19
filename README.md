@@ -1,4 +1,4 @@
-# distributed-systems-course-project
+# Distributed Systems Course Projects/Homeworks
 
 ### LAB1
 
@@ -65,7 +65,6 @@ defined using celery.
 
 /status/<:task_id> route is used to check the status of task with task_id
 
-
 To run it: 
 In seperate terminal emulators:
 
@@ -75,7 +74,8 @@ In seperate terminal emulators:
 
 ### HW1
 
+REST API for flight management
+
 ### HW2
-#TODO
-Gracefully handle interupts!
-Producer has to know that consumer has consumed
+
+Experiments with Message Queueing System ZeroMQ
